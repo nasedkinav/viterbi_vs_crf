@@ -37,8 +37,9 @@ def get_trans_prob(prev_next_tag, prob):
     return np.log(prob[prev_next_tag]) if prev_next_tag in prob else -np.inf
 
 
-def get_word_prob(word_tag, prob):
-    return np.log(prob[word_tag]) if word_tag in prob else -np.inf
+def get_word_prob(word_tag, prob, n_tags):
+    smoothing = 0.999
+    return np.log((smoothing * prob[word_tag] if word_tag in prob else .0) + (1 - smoothing) / n_tags)
 
 
 def viterbi_decode(corpus_sent, tags, t_prob, w_prob):
@@ -47,13 +48,13 @@ def viterbi_decode(corpus_sent, tags, t_prob, w_prob):
     back_point = np.zeros((len(sent), len(tags)), dtype=np.int64)
 
     # initial values
-    viterbi[0, :] = [get_trans_prob((BOS, t), t_prob) + get_word_prob((sent[0], t), w_prob) for t in tags]
+    viterbi[0, :] = [get_trans_prob((BOS, t), t_prob) + get_word_prob((sent[0], t), w_prob, len(tags)) for t in tags]
 
     for i, word in enumerate(sent):  # loop through each word
         if not i:
             continue
         for j, t in enumerate(tags):  # loop through each possible tag for this word
-            prob = np.full((len(tags),), get_word_prob((word, t), w_prob))
+            prob = np.full((len(tags),), get_word_prob((word, t), w_prob, len(tags)))
             for k, prev_tag in enumerate(tags):  # look behind on each possible transition
                 prob[k] += viterbi[i - 1, k] + get_trans_prob((prev_tag, t), t_prob)
             viterbi[i, j] = np.amax(prob)
